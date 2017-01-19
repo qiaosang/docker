@@ -63,3 +63,44 @@ anon_root=/srv/ftp/anon
 完成后重启一下vsftpd
 # /etc/init.d/vsftpd restart
 
+这样的话，基本的vsftpd服务配置好了。但是这样配置完成后客户端并不能连接上，主要应该是默认防火墙设置下,CentOS的防火墙是不开放ftp服务的，需要添加模块和开放21端口才能提供ftp访问。 
+10、添加ip_conntrack_ftp 模块
+
+[root@localhost ~]# vi /etc/sysconfig/iptables-config
+
+添加下面一行
+
+IPTABLES_MODULES="ip_conntrack_ftp"
+
+11、打开21端口
+
+[root@localhost ~]# vi /etc/sysconfig/iptables
+
+添加
+
+    -A INPUT -m state --state NEW -m tcp -p tcp --dport 21 -j ACCEPT
+
+12.重启iptables使新的规则生效
+
+[root@localhost ~]# service iptables restart
+
+13、到此，应该是可以了，若软件测试连接过程中，在用户验证的时候出现了错误503，应该是selinux设置的问题：可以用下面的命令检查
+
+[root@localhost ~]#getsebool -a |grep ftp
+
+allow_ftpd_anon_write --> off
+allow_ftpd_full_access --> off
+allow_ftpd_use_cifs --> off
+allow_ftpd_use_nfs --> off
+allow_tftp_anon_write --> off
+ftp_home_dir --> off
+ftpd_connect_db --> off
+ftpd_disable_trans --> off
+ftpd_is_daemon --> on
+httpd_enable_ftp_server --> off
+
+这是selinux的问题，我们只要打开ftp_home_dir的值开启为on：，allow_ftpd_full_access也一同开启即可。
+
+[root@localhost ~]#setsebool -P ftp_home_dir 1
+[root@localhost ~]#setsebool -P allow_ftpd_full_access 1
+
